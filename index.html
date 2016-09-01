@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>The Guardian - Simple API Demo</title>
+    <script src="https://fb.me/react-with-addons-15.0.1.js"></script>
+    <script src="https://npmcdn.com/react-dom@15.3.0/dist/react-dom.js"></script>
+    <script src="https://npmcdn.com/babel-core@5.8.38/browser.js"></script>
+    <script src="https://npmcdn.com/jquery@3.1.0/dist/jquery.min.js"></script>
+    <style>
+    img {
+      max-width: 50%;
+      height: auto;
+    }
+    .webTitle {
+      cursor: pointer;
+    }
+    body {
+      font-family: Arial;
+    }
+    </style>
+  </head>
+  <body>
+    <div id="content"></div>
+    <script type="text/babel">
+
+    var guardianConfig = {
+      apiKey: "",
+      orderBy: "newest",
+      showBlocks: "main",
+
+      getUrl : function(){
+        return "https://content.guardianapis.com/search?"+
+          "api-key=" + this.apiKey +
+          "&order-by="+ this.orderBy +
+          "&show-blocks="+ this.showBlocks
+      }
+    };
+
+    var NewsBox = React.createClass({
+
+      getInitialState: function() {
+        return { data: []};
+      },
+
+      loadCommentsFromServer: function() {
+        $.ajax({
+          url: this.props.url,
+          dataType: 'json',
+          success: function(guardianData) {
+            this.setState({data: guardianData.response.results});
+          }.bind(this),
+          error: function(xhr, status, err) {
+            console.error(this.props.url, status, err.toString());
+          }.bind(this)
+        });
+      },
+
+      componentDidMount: function() {
+        this.loadCommentsFromServer();
+        setInterval(this.loadCommentsFromServer, this.props.pollInterval);
+      },
+
+      render: function() {
+        return (
+          <div className="newsBox">
+            <h1>Latest News from <a href="https://www.theguardian.com/">The Guardian</a></h1>
+            <NewsList data={this.state.data} />
+          </div>
+        );
+      }
+    });
+
+    var NewsList = React.createClass({
+      
+      render: function() {
+        var newsNodes = this.props.data.map(function(item) {
+          return (
+            <NewsItem sectionName={item.sectionName} 
+                      webTitle={item.webTitle} 
+                      webUrl={item.webUrl} 
+                      articlePreview={item.blocks}/>
+          );
+        });    
+        return (
+          <div className="newsList">
+            {newsNodes}
+          </div>
+        );
+      }
+    });
+
+    var NewsItem = React.createClass({
+
+      getInitialState : function(){
+        return { isVisible: false};
+      },
+
+      handleClick: function(click){
+        this.setState({isVisible: !this.state.isVisible});
+      },
+
+      showArticlePreview: function() {
+        var articlePreview = "";
+
+        if(this.state.isVisible && this.props.articlePreview){
+          articlePreview = this.props.articlePreview.main.bodyHtml + 
+                           "<div className='readFull'>\
+                              <a href = " + this.props.webUrl.toString() + " target='_blank'> Read Full Article </a>\
+                            </div>";
+        }
+
+        return { __html: articlePreview };
+      },
+
+      render: function() {
+        return (
+          <div className='newsItem' onClick={this.handleClick}>
+            <h3 className="sectionName">
+              {this.props.sectionName}
+            </h3>
+              <div className="webTitle" onClick={this.handleClick}> {this.props.webTitle} </div>
+            <div>
+              <div dangerouslySetInnerHTML={this.showArticlePreview()} />  
+            </div>
+          </div>
+        );
+      }
+    });
+
+    ReactDOM.render(
+      <NewsBox url={guardianConfig.getUrl()} pollInterval={20000000} />,
+      document.getElementById('content')
+    );
+
+    </script>
+  </body>
+</html>
